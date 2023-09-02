@@ -26,6 +26,11 @@ const pollSchema = joi.object({
     expireAt: joi.string().isoDate()
 })
 
+const choiceSchema = joi.object({
+    title: joi.string().required(),
+    pollId: joi.string().required()
+})
+
 // rotas
 app.post("/poll", async (req, res) => {
     const { title, expireAt } = req. body
@@ -67,6 +72,36 @@ app.get("/poll", async (req, res) => {
         }))
 
         res.send(poll)
+
+    } catch (err) {
+        return res.status(500).send(err.message)
+    }
+})
+
+app.post("/choice", async (req, res) => {
+    const { title, pollId } = req.body
+
+    console.log(pollId)
+
+    const validation = choiceSchema.validate(req.body, { abortEarly: false })
+    if (validation.error) return res.sendStatus(422)
+
+    try {
+        const poll = await db.collection("polls").findOne({ _id: pollId })
+        if (!poll) return res.sendStatus(404)
+
+        const now = new Date()
+        const expireAt = new Date(poll.expireAt)
+        if (now >= expireAt) return res.sendStatus(403)
+
+        const newChoice = { title, pollId }
+
+        const existChoice = await db.collection("choices").findOne(newChoice)
+        if (existChoice) return res.sendStatus(409)
+
+        await db.collection("choices").insertOne(newChoice)
+
+        res.status(201).send(newChoice)
 
     } catch (err) {
         return res.status(500).send(err.message)
