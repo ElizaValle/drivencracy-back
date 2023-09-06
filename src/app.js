@@ -81,20 +81,18 @@ app.get("/poll", async (req, res) => {
 app.post("/choice", async (req, res) => {
     const { title, pollId } = req.body
 
-    console.log(pollId)
-
     const validation = choiceSchema.validate(req.body, { abortEarly: false })
     if (validation.error) return res.sendStatus(422)
 
     try {
-        const poll = await db.collection("polls").findOne({ _id: pollId })
+        const poll = await db.collection("polls").findOne({ _id: new ObjectId(pollId) })
         if (!poll) return res.sendStatus(404)
 
         const now = new Date()
         const expireAt = new Date(poll.expireAt)
         if (now >= expireAt) return res.sendStatus(403)
 
-        const newChoice = { title, pollId }
+        const newChoice = { title, pollId: new ObjectId(pollId) }
 
         const existChoice = await db.collection("choices").findOne(newChoice)
         if (existChoice) return res.sendStatus(409)
