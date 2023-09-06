@@ -106,5 +106,21 @@ app.post("/choice", async (req, res) => {
     }
 })
 
+app.get("/poll/:id/choice", async (req, res) => {
+    const pollId = new ObjectId(req.params.id)
+
+    try {
+        const poll = await db.collection("polls").findOne({ _id: pollId })
+        if (!poll) return res.sendStatus(404)
+
+        const votingOptions = await db.collection("choices").find({ pollId }).toArray()
+
+        res.send(votingOptions)
+
+    } catch (err) {
+        return res.status(500).send(err.message)
+    }
+})
+
 const PORT = 5000
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`))
