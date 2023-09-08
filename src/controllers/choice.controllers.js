@@ -96,6 +96,7 @@ export async function getResult(req, res) {
             title: poll.title,
             expireAt: poll.expireAt,
             result: {
+                _id: mostVotedOption._id,
                 title: mostVotedOption.title,
                 votes: maxVotes
             }
