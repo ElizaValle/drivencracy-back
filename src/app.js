@@ -122,5 +122,67 @@ app.get("/poll/:id/choice", async (req, res) => {
     }
 })
 
+app.post("/choice/:id/vote", async (req, res) => {
+    const choiceId = new ObjectId(req.params.id)
+
+    try {
+        const choice = await db.collection("choices").findOne({ _id: choiceId })
+        if (!choice) return res.sendStatus(404)
+
+        const poll = await db.collection("polls").findOne({ _id: choice.pollId })
+        const now = new Date()
+        const expireAt = new Date(poll.expireAt)
+
+        if (now >= expireAt) return res.sendStatus(403)
+
+        const vote = { choiceId, createdAt: new Date() }
+
+        await db.collection("votes").insertOne(vote)
+
+        res.sendStatus(201)
+
+    } catch (err) {
+        return res.status(500).send(err.message)
+    }
+})
+
+app.get("/poll/:id/result", async (req, res) => {
+    const pollId = new ObjectId(req.params.id)
+
+    try {
+        const poll = await db.collection("polls").findOne({ _id: pollId })
+        if (!poll) return res.sendStatus(404)
+
+        const choices = await db.collection("choices").find({ pollId }).toArray()
+
+        let mostVotedOption = null
+        let maxVotes = 0
+
+        for (const choice of choices) {
+            const votesCount = await db.collection("votes").countDocuments({ choiceId: choice._id })
+
+            if (votesCount > maxVotes) {
+                mostVotedOption = choice
+                maxVotes = votesCount
+            }
+        }
+
+        const result = {
+            _id: poll._id,
+            title: poll.title,
+            expireAt: poll.expireAt,
+            result: {
+                title: mostVotedOption.title,
+                votes: maxVotes
+            }
+        }
+
+        res.send(result)
+
+    } catch (err) {
+        return res.status(500).send(err.message)
+    }
+})
+
 const PORT = 5000
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`))
